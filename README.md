@@ -226,3 +226,125 @@ Ghi với mỗi case: **thao tác, kết quả mong đợi, kết quả thực t
 ## 5. Nguyên tắc ưu tiên
 
 Hoàn thành đúng core requirement và test trước khi thêm chart, pagination, dark mode, tags hoặc deployment. PDF chấm cả **hiểu yêu cầu, thiết kế, triển khai, kiểm thử, debug, giải thích code, xử lý thay đổi và sử dụng AI có kiểm chứng**; mỗi stage nên có commit và bằng chứng tương ứng.
+
+---
+
+## 6. Hướng dẫn thực thi & Kết quả Stage 2 (Database & Data Model)
+
+### 6.1. Sơ đồ Thực thể và Quan hệ (ERD)
+
+```text
+┌────────────────────────┐         1:N         ┌────────────────────────┐
+│       categories       │────────────────────<│          news          │
+├────────────────────────┤                     ├────────────────────────┤
+│ id (PK, IDENTITY)      │                     │ id (PK, IDENTITY)      │
+│ name (NVARCHAR(100))   │                     │ title (NVARCHAR(255))  │
+│ description (500)      │                     │ content (NVARCHAR(MAX))│
+│ status (INT: 1=Act)    │                     │ category_id (FK) ──────┼──► categories(id) [NO ACTION]
+│ created_at (DATETIME2) │                     │ created_by (FK)  ──────┼──► users(id)      [NO ACTION]
+└────────────────────────┘                     │ status (INT: 1=Act)    │
+                                               │ created_at (DATETIME2) │
+┌────────────────────────┐         1:N         │ updated_at (DATETIME2) │
+│         users          │────────────────────<│                        │
+├────────────────────────┤                     └────────────────────────┘
+│ id (PK, IDENTITY)      │
+│ username (UQ, NV(50))  │
+│ password_hash (NV(255))│ (BCrypt $2a$10$...)
+│ role (INT: 1=Adm,2=Stf)│
+│ status (INT: 1=Act)    │
+│ created_at (DATETIME2) │
+└────────────────────────┘
+```
+
+> **Quy tắc ràng buộc:**
+> - `FK_News_Category` và `FK_News_User` đều được thiết lập `ON DELETE NO ACTION`.
+> - Không thể xóa Category khi đang có News tham chiếu.
+> - Không thể xóa User khi User đó đã từng tạo News.
+
+---
+
+### 6.2. Hướng dẫn tạo Database và Chạy Script
+
+1. **Tạo Database rỗng trong SQL Server:**
+   Mở SSMS, Azure Data Studio hoặc sqlcmd và chạy:
+   ```sql
+   CREATE DATABASE FUNewsManagementSystem;
+   GO
+   ```
+
+2. **Chạy Script tạo Bảng:**
+   Mở file script [database/01_schema.sql](file:///h:/Code%20Java/SBA301/HoangTLT_SE1910/database/01_schema.sql) (hoặc `backend/src/main/resources/database/01_schema.sql`), chọn database `FUNewsManagementSystem` và thực thi:
+   ```sql
+   USE FUNewsManagementSystem;
+   GO
+   -- Thực thi toàn bộ nội dung file 01_schema.sql
+   ```
+   Script sẽ tự động tạo 3 bảng `users`, `categories`, `news` kèm các ràng buộc `UNIQUE`, `CHECK` và `FOREIGN KEY`.
+
+---
+
+### 6.3. Cấu hình Kết nối Backend
+
+**Cách 1: Dùng biến môi trường (Khuyên dùng)**
+Thiết lập mật khẩu SQL Server của bạn trước khi chạy:
+- **PowerShell:**
+  ```powershell
+  $env:DB_HOST="localhost"
+  $env:DB_PORT="1433"
+  $env:DB_NAME="FUNewsManagementSystem"
+  $env:DB_USERNAME="sa"
+  $env:DB_PASSWORD="MậtKhẩuCủaBạnỞĐây"
+  cd backend
+  mvn spring-boot:run
+  ```
+- **CMD:**
+  ```cmd
+  set DB_PASSWORD=MậtKhẩuCủaBạnỞĐây
+  cd backend
+  mvn spring-boot:run
+  ```
+
+**Cách 2: Dùng file `application-local.properties` (An toàn, đã nằm trong .gitignore)**
+1. Sao chép [application-local.properties.example](file:///h:/Code%20Java/SBA301/HoangTLT_SE1910/backend/src/main/resources/application-local.properties.example) thành `backend/src/main/resources/application-local.properties`.
+2. Điền `DB_PASSWORD=MậtKhẩuCủaBạn` vào file.
+3. Chạy backend với profile local:
+   ```powershell
+   cd backend
+   mvn spring-boot:run -Dspring-boot.run.profiles=local
+   ```
+
+---
+
+### 6.4. Cơ chế Nạp Dữ liệu Mẫu (Data Seeder & BCrypt Hashing)
+
+Khi Backend khởi động thành công và kết nối SQL Server, `DataSeeder` tự động kiểm tra và nạp:
+1. **Tài khoản Admin:**
+   - `username`: `Admin`
+   - `password_hash`: Chuỗi mã hóa BCrypt của `Admin` (dạng `$2a$10$...`)
+   - `role`: `1` (Admin)
+   - `status`: `1` (Active)
+2. **Tài khoản Staff:**
+   - `username`: `Staff01`
+   - `password_hash`: Chuỗi mã hóa BCrypt của `Staff@123`
+   - `role`: `2` (Staff)
+   - `status`: `1` (Active)
+3. **Danh mục mẫu (Categories):**
+   - *Công nghệ & Đổi mới* (status: 1)
+   - *Đời sống Sinh viên* (status: 1)
+   - *Thông báo Học vụ* (status: 1)
+4. **Tin tức mẫu (News):**
+   - 3 bài viết hợp lệ tham chiếu trực tiếp đến các Category và User trên.
+
+> **Đặc tính Idempotent:** `DataSeeder` luôn kiểm tra sự tồn tại (`existsByUsername`, `findByName`, `existsByTitle`) trước khi chèn. Bạn có thể khởi động lại backend bao nhiêu lần tùy ý mà **không bị nhân đôi bản ghi** hoặc vi phạm ràng buộc Unique.
+
+---
+
+### 6.5. Kết quả Kiểm thử Tự động (Automated Test Evidence)
+
+Đã chạy `mvn test` trên backend:
+- `PasswordHashingTest`: **2/2 PASSED** (Xác nhận mật khẩu `Admin` được băm BCrypt, chuỗi hash không trùng `Admin`, khớp với phương thức `matches()`).
+- `DataModelValidationTest`: **6/6 PASSED** (Xác nhận validation thực thể `User`, `Category`, `News`, chặn username/title rỗng, kiểm tra các helper methods).
+- `HealthControllerTest`: **1/1 PASSED** (Xác nhận endpoint `GET /api/health` trả về 200 OK với trạng thái UP).
+- `FUNewsManagementSystemApplicationTests`: **1/1 PASSED** (Xác nhận Spring Context nạp thành công).
+- **Tổng cộng: 10/10 tests PASSED.**
+

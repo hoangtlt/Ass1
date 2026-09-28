@@ -26,6 +26,8 @@ backend/target/
 backend/*.log
 backend/.mvn/timing.properties
 backend/.flattened-pom.xml
+backend/src/main/resources/application-local.properties
+*.local.properties
 
 # Frontend (Node & Vite)
 frontend/node_modules/
