@@ -348,3 +348,182 @@ Khi Backend khởi động thành công và kết nối SQL Server, `DataSeeder`
 - `FUNewsManagementSystemApplicationTests`: **1/1 PASSED** (Xác nhận Spring Context nạp thành công).
 - **Tổng cộng: 10/10 tests PASSED.**
 
+---
+
+## 7. Hướng dẫn thực thi & Kết quả Stage 3 (Backend Nền tảng & Lỗi API)
+
+### 7.1. Cấu trúc Kiến trúc Phân tầng (Layered Architecture)
+
+Backend được tổ chức theo nguyên tắc phân chia trách nhiệm rõ ràng (Separation of Concerns):
+
+```text
+HTTP Request (Client / React)
+        │
+        ▼
+┌────────────────────────────────────────┐
+│        1. Controller Layer             │  - Nhận HTTP request, đọc PathVariable/RequestBody
+│  (CategoryController, HealthController)│  - Trả về ResponseEntity<DTO> hoặc ResponseEntity<ErrorResponse>
+└───────────────────┬────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────────────┐
+│          2. Service Layer              │  - Thực thi logic nghiệp vụ, quản lý Transaction (@Transactional)
+│   (CategoryService, CategoryServiceImpl│  - Ném custom exceptions (ResourceNotFoundException, ...)
+└───────────────────┬────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────────────┐
+│         3. Repository Layer            │  - Spring Data JPA kế thừa JpaRepository
+│  (CategoryRepository, NewsRepo, ...)   │  - Tương tác trực tiếp với Microsoft SQL Server
+└───────────────────┬────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────────────┐
+│     4. Microsoft SQL Server Database   │  - Lưu trữ dữ liệu thực thể (users, categories, news)
+└────────────────────────────────────────┘
+```
+
+> **Nguyên tắc an toàn dữ liệu:**
+> - Controller **không bao giờ trả trực tiếp JPA Entity** ra ngoài client. Toàn bộ dữ liệu được chuyển đổi sang **Response DTO** (`CategoryResponse`).
+> - DTO tuyệt đối **không chứa mật khẩu hoặc password hash**, không làm lộ thông tin nhạy cảm của server hay cấu trúc bảng.
+
+---
+
+### 7.2. Đặc tả API Category Tối thiểu (Stage 3)
+
+| Endpoint | Method | Chức năng | Response Type | Mã HTTP |
+| :--- | :--- | :--- | :--- | :--- |
+| `/api/health` | `GET` | Kiểm tra trạng thái hệ thống | `HealthResponse` | `200 OK` |
+| `/api/categories` | `GET` | Lấy danh sách toàn bộ chuyên mục | `List<CategoryResponse>` (hoặc `[]` nếu rỗng) | `200 OK` |
+| `/api/categories/{id}` | `GET` | Lấy chi tiết một chuyên mục theo ID | `CategoryResponse` | `200 OK` / `404 Not Found` |
+
+---
+
+### 7.3. Định dạng Phản hồi Thống nhất (Success & Error JSON)
+
+#### 1. Phản hồi thành công `GET /api/categories` (HTTP 200)
+```json
+[
+  {
+    "id": 1,
+    "name": "Công nghệ & Đổi mới",
+    "description": "Chuyên mục tin tức về công nghệ số, trí tuệ nhân tạo và khởi nghiệp sáng tạo.",
+    "status": 1,
+    "createdAt": "2026-09-23T11:20:14"
+  },
+  {
+    "id": 2,
+    "name": "Đời sống Sinh viên",
+    "description": "Các hoạt động câu lạc bộ, sự kiện văn hóa nghệ thuật và phong trào tình nguyện.",
+    "status": 1,
+    "createdAt": "2026-09-23T11:20:14"
+  }
+]
+```
+*(Nếu bảng rỗng, trả về mảng rỗng `[]` kèm HTTP 200 OK thay vì ném lỗi).*
+
+#### 2. Phản hồi thành công `GET /api/categories/1` (HTTP 200)
+```json
+{
+  "id": 1,
+  "name": "Công nghệ & Đổi mới",
+  "description": "Chuyên mục tin tức về công nghệ số, trí tuệ nhân tạo và khởi nghiệp sáng tạo.",
+  "status": 1,
+  "createdAt": "2026-09-23T11:20:14"
+}
+```
+
+#### 3. Phản hồi lỗi không tìm thấy `GET /api/categories/999` (HTTP 404)
+```json
+{
+  "timestamp": "2026-09-28T15:22:32",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Không tìm thấy chuyên mục với ID: 999",
+  "path": "/api/categories/999"
+}
+```
+
+#### 4. Phản hồi lỗi sai tham số `GET /api/categories/abc` (HTTP 400)
+```json
+{
+  "timestamp": "2026-09-28T15:22:35",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Tham số 'id' có giá trị 'abc' không đúng định dạng",
+  "path": "/api/categories/abc"
+}
+```
+
+#### 5. Phản hồi lỗi validation dữ liệu đầu vào (HTTP 400)
+```json
+{
+  "timestamp": "2026-09-28T15:25:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Dữ liệu đầu vào không hợp lệ",
+  "path": "/api/categories",
+  "errors": {
+    "name": "Tên chuyên mục không được để trống",
+    "status": "Trạng thái chỉ nhận giá trị 0 (Inactive) hoặc 1 (Active)"
+  }
+}
+```
+
+#### 6. Phản hồi lỗi xung đột dữ liệu / nghiệp vụ (HTTP 409)
+```json
+{
+  "timestamp": "2026-09-28T15:25:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Tên chuyên mục đã tồn tại trong hệ thống",
+  "path": "/api/categories"
+}
+```
+
+#### 7. Phản hồi lỗi hệ thống ngoài dự kiến (HTTP 500)
+Toàn bộ lỗi chưa lường trước đều được bắt qua `GlobalExceptionHandler`, ghi log nội bộ qua SLF4J và trả về thông báo an toàn, **tuyệt đối không làm lộ stack trace hoặc cấu trúc SQL**:
+```json
+{
+  "timestamp": "2026-09-28T15:25:00",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.",
+  "path": "/api/categories"
+}
+```
+
+---
+
+### 7.4. Cấu trúc Request DTO Validation (Chuẩn bị cho CRUD Stage 6–8)
+
+Đã tạo sẵn `CategoryRequest` với các annotation validation chặt chẽ:
+- `name`: `@NotBlank(message = "Tên chuyên mục không được để trống")`, `@Size(max = 100)`
+- `description`: `@Size(max = 500, message = "Mô tả tối đa 500 ký tự")`
+- `status`: `@NotNull`, `@Min(0)`, `@Max(1)`
+
+---
+
+### 7.5. Bằng chứng Kiểm thử (Test Evidence)
+
+#### 1. Kiểm thử Tự động (Automated Tests)
+Chạy lệnh `mvn test` trên backend:
+- `CategoryControllerTest`: **6/6 PASSED** (Kiểm tra 200 danh sách, 200 mảng rỗng, 200 chi tiết, 404 không tìm thấy, 400 sai ID, 400 type mismatch).
+- `CategoryServiceTest`: **5/5 PASSED** (Kiểm tra service logic, mock repository, ném ngoại lệ đúng loại).
+- `CategoryDtoValidationTest`: **6/6 PASSED** (Kiểm tra validation hợp lệ/không hợp lệ với Bean Validator).
+- `DataModelValidationTest`: **6/6 PASSED**.
+- `PasswordHashingTest`: **2/2 PASSED**.
+- `HealthControllerTest`: **1/1 PASSED**.
+- `FUNewsManagementSystemApplicationTests`: **1/1 PASSED**.
+- **Tổng cộng: 27/27 tests PASSED (0 failures, 0 errors).**
+
+#### 2. Kiểm thử Thực tế trên SQL Server (Live Endpoint Testing)
+Đã khởi động ứng dụng và kiểm chứng trực tiếp bằng `curl.exe`:
+- `curl http://localhost:8080/api/health` ➔ `200 OK`, `{"status":"UP",...}`
+- `curl http://localhost:8080/api/categories` ➔ `200 OK`, đọc đủ 3 chuyên mục mẫu từ SQL Server.
+- `curl http://localhost:8080/api/categories/1` ➔ `200 OK`, chi tiết chuyên mục ID 1.
+- `curl http://localhost:8080/api/categories/999` ➔ `404 Not Found`, đúng chuẩn `ErrorResponse`.
+- `curl http://localhost:8080/api/categories/abc` ➔ `400 Bad Request`, thông báo đúng định dạng.
+- `curl http://localhost:8080/api/categories/-1` ➔ `400 Bad Request`, ID chuyên mục không hợp lệ.
+
+

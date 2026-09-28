@@ -8,10 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/**
- * Kiểm tra khởi động ApplicationContext cơ bản trong môi trường test độc lập
- * khi chưa có thông tin đăng nhập SQL Server thật trên máy test/CI.
- */
 @SpringBootTest
 @TestPropertySource(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration",
@@ -30,6 +26,7 @@ class FUNewsManagementSystemApplicationTests {
 
     @Test
     void contextLoads() {
-        // ApplicationContext nạp thành công các Bean cốt lõi
+
     }
 }
+

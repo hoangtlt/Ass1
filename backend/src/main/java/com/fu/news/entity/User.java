@@ -7,12 +7,6 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-/**
- * Thực thể User ánh xạ bảng 'users' trong SQL Server.
- * Quy ước:
- * - role: 1 = Admin, 2 = Staff
- * - status: 1 = Active, 0 = Inactive
- */
 @Entity
 @Table(name = "users")
 public class User {
@@ -65,8 +59,6 @@ public class User {
             status = STATUS_ACTIVE;
         }
     }
-
-    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -128,3 +120,4 @@ public class User {
         return this.status != null && this.status == STATUS_ACTIVE;
     }
 }
+

@@ -11,9 +11,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Kiểm tra web layer cho endpoint /api/health (đảm bảo tính tương thích và liên tục của Stage 1).
- */
 @WebMvcTest(HealthController.class)
 @Import(WebConfig.class)
 class HealthControllerTest {
@@ -33,3 +30,4 @@ class HealthControllerTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 }
+

@@ -7,11 +7,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Kiểm tra tính đúng đắn của thuật toán mã hóa mật khẩu BCrypt cho tài khoản Admin/Admin.
- * Yêu cầu:
- * - Mật khẩu Admin phải được hash trước khi lưu; không lưu chuỗi 'Admin' nguyên văn trong SQL Server.
- */
 class PasswordHashingTest {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -44,3 +39,4 @@ class PasswordHashingTest {
                 "Mật khẩu rỗng phải bị từ chối");
     }
 }
+

@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
-/**
- * Controller kiểm tra trạng thái hoạt động của hệ thống.
- */
 @RestController
 @RequestMapping("/api")
 public class HealthController {
@@ -26,3 +23,4 @@ public class HealthController {
         return ResponseEntity.ok(response);
     }
 }
+

@@ -14,11 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Component nạp dữ liệu khởi tạo (Data Seeder) cho FUNewsManagementSystem.
- * Đảm bảo tính Idempotent: Kiểm tra sự tồn tại trước khi tạo mới để chạy lại
- * nhiều lần không sinh bản ghi trùng hoặc lỗi ràng buộc UNIQUE.
- */
 @Component
 @ConditionalOnProperty(name = "app.seeder.enabled", havingValue = "true", matchIfMissing = true)
 public class DataSeeder implements CommandLineRunner {
@@ -45,7 +40,6 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         log.info("=== Bắt đầu kiểm tra và nạp dữ liệu mẫu (Stage 2) ===");
 
-        // 1. Seed Users (Admin & Staff)
         User admin = seedUserIfNotFound(
                 "Admin",
                 "Admin",
@@ -60,7 +54,6 @@ public class DataSeeder implements CommandLineRunner {
                 User.STATUS_ACTIVE
         );
 
-        // 2. Seed Categories
         Category catTech = seedCategoryIfNotFound(
                 "Công nghệ & Đổi mới",
                 "Chuyên mục tin tức về công nghệ số, trí tuệ nhân tạo và khởi nghiệp sáng tạo.",
@@ -79,7 +72,6 @@ public class DataSeeder implements CommandLineRunner {
                 Category.STATUS_ACTIVE
         );
 
-        // 3. Seed News
         seedNewsIfNotFound(
                 "FPT University tổ chức triển lãm công nghệ TechDay 2026",
                 "Triển lãm TechDay 2026 quy tụ hơn 50 dự án sáng tạo từ sinh viên và doanh nghiệp công nghệ hàng đầu, mang đến những trải nghiệm thực tế về AI, Cloud và IoT.",
@@ -139,3 +131,4 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 }
+

@@ -7,11 +7,6 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-/**
- * Thực thể Category ánh xạ bảng 'categories' trong SQL Server.
- * Quy ước:
- * - status: 1 = Active, 0 = Inactive
- */
 @Entity
 @Table(name = "categories")
 public class Category {
@@ -58,8 +53,6 @@ public class Category {
         }
     }
 
-    // Getters and Setters
-
     public Long getId() {
         return id;
     }
@@ -104,3 +97,4 @@ public class Category {
         return this.status != null && this.status == STATUS_ACTIVE;
     }
 }
+

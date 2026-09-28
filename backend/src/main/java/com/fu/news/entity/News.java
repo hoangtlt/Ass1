@@ -7,14 +7,6 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-/**
- * Thực thể News ánh xạ bảng 'news' trong SQL Server.
- * Quan hệ:
- * - category_id: FK tham chiếu Category (nhiều tin thuộc một danh mục)
- * - created_by: FK tham chiếu User (nhiều tin được tạo bởi một người dùng)
- * Quy ước:
- * - status: 1 = Active, 0 = Inactive
- */
 @Entity
 @Table(name = "news")
 public class News {
@@ -84,8 +76,6 @@ public class News {
         updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
-
     public Long getId() {
         return id;
     }
@@ -154,3 +144,4 @@ public class News {
         return this.status != null && this.status == STATUS_ACTIVE;
     }
 }
+

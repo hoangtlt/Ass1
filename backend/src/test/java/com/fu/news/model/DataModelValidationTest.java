@@ -15,9 +15,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Kiểm tra các ràng buộc thực thể (Entity constraints, validation và logic quan hệ).
- */
 class DataModelValidationTest {
 
     private static Validator validator;
@@ -100,3 +97,4 @@ class DataModelValidationTest {
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("createdBy")));
     }
 }
+
